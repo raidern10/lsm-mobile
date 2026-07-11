@@ -86,9 +86,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/absensi', [InstrukturController::class, 'absensiStore']);
 
         // Catatan (validasi & feedback)
+        // Daftar catatan siswa binaan (controller sudah memfilter per role)
+Route::get('/catatan', [CatatanController::class, 'index']);
         Route::put('/catatan/{catatan}/approve',  [CatatanController::class, 'approve']);
         Route::put('/catatan/{catatan}/batal',    [InstrukturController::class, 'catatanBatal']);
         Route::put('/catatan/{catatan}/komentar', [CatatanController::class, 'komentar']);
+        
 
         // Observasi (validasi)
         Route::put('/observasi/{observasi}/approve', [ObservasiController::class, 'approve']);
