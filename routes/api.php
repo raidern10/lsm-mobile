@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Semua endpoint (kecuali /login) dikunci auth:sanctum.
 | Hak akses per-role divalidasi middleware role:<nama_role>.
+| Penamaan path dibuat spesifik per role agar konsisten & self-documenting.
 */
 
 // ============================================================
@@ -31,96 +32,75 @@ Route::post('/login', [AuthController::class, 'login']);
 // ============================================================
 Route::middleware('auth:sanctum')->group(function () {
 
-    // ---- AKUN ----
+    // ---- AKUN (semua role) ----
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // ---- INFORMASI / PENGUMUMAN (semua role) ----
+    // ---- GLOBAL: INFORMASI & DOKUMEN (semua role) ----
     Route::get('/informasis', [InformasiController::class, 'index']);
-
-    // ---- DOKUMEN GLOBAL & PER-SISWA ----
     Route::get('/dokumen/surat-tugas/lihat',     [DokumenController::class, 'suratTugasLihat']);
     Route::get('/dokumen/surat-tugas/download',  [DokumenController::class, 'suratTugasDownload']);
     Route::get('/dokumen/{siswa}/{jenis}/lihat', [DokumenController::class, 'lihatSiswa'])
         ->whereNumber('siswa');
 
-    // ============================================================
-    // JURNAL HARIAN
-    // ============================================================
-    Route::get('/jurnals', [JurnalController::class, 'index']);
+    // ---- SHARED: JURNAL (siswa lihat/tambah miliknya, instruktur lihat/approve bimbingannya) ----
+    Route::get('/jurnals', [JurnalController::class, 'index']);            // difilter per role di controller
     Route::get('/jurnals/{jurnal}', [JurnalController::class, 'show']);
     Route::post('/jurnals', [JurnalController::class, 'store'])
         ->middleware('role:siswa_pkl');
     Route::post('/jurnals/{jurnal}/approve', [JurnalController::class, 'approve'])
         ->middleware('role:instruktur_industri');
 
-    // ============================================================
-    // ABSENSI
-    // ============================================================
-    Route::get('/absensis', [AbsensiController::class, 'index']);
+    // ---- SHARED: ABSENSI ----
+    Route::get('/absensis', [AbsensiController::class, 'index']);          // difilter per role di controller
     Route::post('/absensis', [AbsensiController::class, 'store'])
         ->middleware('role:siswa_pkl');
 
     // ============================================================
-    // CATATAN KEGIATAN
-    // ============================================================
-    Route::get('/catatans', [CatatanController::class, 'index']);
-    Route::post('/catatans', [CatatanController::class, 'store'])
-        ->middleware('role:siswa_pkl');
-    Route::put('/catatans/{catatan}', [CatatanController::class, 'update'])
-        ->middleware('role:siswa_pkl');
-    Route::delete('/catatans/{catatan}', [CatatanController::class, 'destroy'])
-        ->middleware('role:siswa_pkl');
-    Route::post('/catatans/{catatan}/approve', [CatatanController::class, 'approve'])
-        ->middleware('role:instruktur_industri');
-    Route::post('/catatans/{catatan}/komentar', [CatatanController::class, 'komentar'])
-        ->middleware('role:instruktur_industri');
-
-    // ============================================================
-    // OBSERVASI
-    // ============================================================
-    Route::get('/observasis', [ObservasiController::class, 'index']);
-    Route::get('/observasis/{observasi}', [ObservasiController::class, 'show']);
-    Route::post('/observasis', [ObservasiController::class, 'store'])
-        ->middleware('role:guru_pembimbing');
-    Route::put('/observasis/{observasi}', [ObservasiController::class, 'update'])
-        ->middleware('role:guru_pembimbing');
-    Route::delete('/observasis/{observasi}', [ObservasiController::class, 'destroy'])
-        ->middleware('role:guru_pembimbing');
-    Route::post('/observasis/{observasi}/approve', [ObservasiController::class, 'approve'])
-        ->middleware('role:instruktur_industri');
-
-    // ============================================================
-    // PENILAIAN
-    // ============================================================
-    Route::get('/nilais', [NilaiController::class, 'index']);
-    Route::get('/nilais/{siswa}', [NilaiController::class, 'show'])->whereNumber('siswa');
-    Route::post('/nilais/instruktur', [NilaiController::class, 'storeInstruktur'])
-        ->middleware('role:instruktur_industri');
-    Route::post('/nilais/guru', [NilaiController::class, 'storeGuru'])
-        ->middleware('role:guru_pembimbing');
-
-    // ============================================================
-    // SISWA PKL — upload dokumen pendukung
+    // ROLE: SISWA PKL
     // ============================================================
     Route::middleware('role:siswa_pkl')->prefix('siswa')->group(function () {
+        // Catatan kegiatan
+        Route::get('/catatan',        [CatatanController::class, 'index']);
+        Route::post('/catatan',       [CatatanController::class, 'store']);
+        Route::match(['put', 'patch'], '/catatan/{catatan}', [CatatanController::class, 'update']);
+        Route::delete('/catatan/{catatan}', [CatatanController::class, 'destroy']);
+
+        // Observasi & Nilai (lihat milik sendiri)
+        Route::get('/observasi', [ObservasiController::class, 'index']);
+        Route::get('/nilai',     [NilaiController::class, 'index']);
+
+        // Upload dokumen pendukung
         Route::post('/dokumen', [DokumenController::class, 'uploadSiswa']);
     });
 
     // ============================================================
-    // INSTRUKTUR INDUSTRI
+    // ROLE: INSTRUKTUR INDUSTRI
     // ============================================================
     Route::middleware('role:instruktur_industri')->prefix('instruktur')->group(function () {
-        Route::get('/siswa',                       [InstrukturController::class, 'siswa']);
-        Route::put('/jurnal/{jurnal}/update',      [InstrukturController::class, 'jurnalUpdate']);
-        Route::get('/absensi',                     [InstrukturController::class, 'absensiIndex']);
-        Route::post('/absensi',                    [InstrukturController::class, 'absensiStore']);
-        Route::put('/catatan/{catatan}/batal',     [InstrukturController::class, 'catatanBatal']);
-        Route::put('/observasi/{observasi}/batal', [InstrukturController::class, 'observasiBatal']);
+        Route::get('/siswa',                  [InstrukturController::class, 'siswa']);
+        Route::put('/jurnal/{jurnal}/update', [InstrukturController::class, 'jurnalUpdate']);
+
+        // Absensi
+        Route::get('/absensi',  [InstrukturController::class, 'absensiIndex']);
+        Route::post('/absensi', [InstrukturController::class, 'absensiStore']);
+
+        // Catatan (validasi & feedback)
+        Route::put('/catatan/{catatan}/approve',  [CatatanController::class, 'approve']);
+        Route::put('/catatan/{catatan}/batal',    [InstrukturController::class, 'catatanBatal']);
+        Route::put('/catatan/{catatan}/komentar', [CatatanController::class, 'komentar']);
+
+        // Observasi (validasi)
+        Route::put('/observasi/{observasi}/approve', [ObservasiController::class, 'approve']);
+        Route::put('/observasi/{observasi}/batal',   [InstrukturController::class, 'observasiBatal']);
+
+        // Nilai
+        Route::get('/nilai',  [NilaiController::class, 'index']);
+        Route::post('/nilai', [NilaiController::class, 'storeInstruktur']);
     });
 
     // ============================================================
-    // GURU PEMBIMBING
+    // ROLE: GURU PEMBIMBING
     // ============================================================
     Route::middleware('role:guru_pembimbing')->prefix('guru')->group(function () {
         Route::get('/dashboard',          [GuruController::class, 'dashboard']);
@@ -128,6 +108,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/monitoring/jurnal',  [GuruController::class, 'monitoringJurnal']);
         Route::get('/monitoring/absensi', [GuruController::class, 'monitoringAbsensi']);
         Route::get('/catatan',            [GuruController::class, 'catatan']);
+
+        // Kelola lembar observasi (CRUD)
+        Route::get('/observasi',                [ObservasiController::class, 'index']);
+        Route::post('/observasi',               [ObservasiController::class, 'store']);
+        Route::put('/observasi/{observasi}',    [ObservasiController::class, 'update']);
+        Route::delete('/observasi/{observasi}', [ObservasiController::class, 'destroy']);
+
+        // Nilai (akademis)
+        Route::get('/nilai',  [NilaiController::class, 'index']);
+        Route::post('/nilai', [NilaiController::class, 'storeGuru']);
     });
 
     // ============================================================
