@@ -19,6 +19,7 @@ use App\Http\Controllers\PeriodePklController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RiwayatController;
 use App\Http\Controllers\SiswaController;
+use App\Http\Controllers\Api\CetakController as ApiCetakController;
 use App\Models\Jurnal;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -312,6 +313,15 @@ Route::put('/observasi/{id}/batal', [ObservasiController::class, 'batalApproveIn
         Route::post('/nilai', [NilaiController::class, 'storeInstruktur'])->name('nilai.store');
     });
 
+});
+
+
+
+Route::middleware('signed')->group(function () {
+    Route::get('/cetak-file/jurnal/{siswa}',    [ApiCetakController::class, 'jurnalFile'])->name('cetak.jurnal.file');
+    Route::get('/cetak-file/catatan/{siswa}',   [ApiCetakController::class, 'catatanFile'])->name('cetak.catatan.file');
+    Route::get('/cetak-file/observasi/{siswa}', [ApiCetakController::class, 'observasiFile'])->name('cetak.observasi.file');
+    Route::get('/cetak-file/nilai/{siswa}',     [ApiCetakController::class, 'nilaiFile'])->name('cetak.nilai.file');
 });
 
 require __DIR__ . '/auth.php';
